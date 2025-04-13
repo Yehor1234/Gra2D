@@ -13,6 +13,7 @@
     <None Remove="laka.png" />
     <None Remove="las.png" />
     <None Remove="skala.png" />
+    <None Remove="wilk.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +21,9 @@
     <Resource Include="laka.png" />
     <Resource Include="las.png" />
     <Resource Include="skala.png" />
+    <Resource Include="wilk.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
 </Project>

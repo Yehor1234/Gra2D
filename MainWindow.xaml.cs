@@ -1,6 +1,5 @@
-﻿using Microsoft.Win32;
-using System;
-using System.IO;
+﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -10,186 +9,288 @@ namespace Gra2D
 {
     public partial class MainWindow : Window
     {
-        // Stałe reprezentujące rodzaje terenu
-        public const int LAS = 1;     // las
-        public const int LAKA = 2;     // łąka
-        public const int SKALA = 3;   // skały
-        public const int ILE_TERENOW = 4;   // ile terenów
-        // Mapa przechowywana jako tablica dwuwymiarowa int
+        public const int LAS = 1;
+        public const int LAKA = 2;
+        public const int SKALA = 3;
+        public const int ILE_TERENOW = 4;
+
         private int[,] mapa;
         private int szerokoscMapy;
         private int wysokoscMapy;
-        // Dwuwymiarowa tablica kontrolek Image reprezentujących segmenty mapy
         private Image[,] tablicaTerenu;
-        // Rozmiar jednego segmentu mapy w pikselach
         private const int RozmiarSegmentu = 32;
+        private int calkowiteDrzewa = 0;
 
-        // Tablica obrazków terenu – indeks odpowiada rodzajowi terenu
-        // Indeks 1: las, 2: łąka, 3: skały
         private BitmapImage[] obrazyTerenu = new BitmapImage[ILE_TERENOW];
+        private List<Wilk> wilki = new List<Wilk>();
+        private Gracz gracz;
+        private Random random = new Random();
+        private int poziomTrudnosci = 1;
+        private const int BazowaWielkoscMapy = 10;
 
-        // Pozycja gracza na mapie
-        private int pozycjaGraczaX = 0;
-        private int pozycjaGraczaY = 0;
-        // Obrazek reprezentujący gracza
-        private Image obrazGracza;
-        // Licznik zgromadzonego drewna
-        private int iloscDrewna = 0;
         public MainWindow()
         {
             InitializeComponent();
             WczytajObrazyTerenu();
-
-            // Inicjalizacja obrazka gracza
-            obrazGracza = new Image
-            {
-                Width = RozmiarSegmentu,
-                Height = RozmiarSegmentu
-            };
-            BitmapImage bmpGracza = new BitmapImage(new Uri("gracz.png", UriKind.Relative));
-            obrazGracza.Source = bmpGracza;
+            NowaGra();
         }
+
+        private void NowaGra()
+        {
+            poziomTrudnosci = 1;
+            gracz = new Gracz
+            {
+                Obraz = new Image
+                {
+                    Width = RozmiarSegmentu,
+                    Height = RozmiarSegmentu,
+                    Source = new BitmapImage(new Uri("gracz.png", UriKind.Relative))
+                },
+                Zycia = 3,
+                Drewno = 0
+            };
+            WygenerujMape();
+        }
+
         private void WczytajObrazyTerenu()
         {
-            // Zakładamy, że tablica jest indeksowana od 0, ale używamy indeksów 1-3
             obrazyTerenu[LAS] = new BitmapImage(new Uri("las.png", UriKind.Relative));
             obrazyTerenu[LAKA] = new BitmapImage(new Uri("laka.png", UriKind.Relative));
             obrazyTerenu[SKALA] = new BitmapImage(new Uri("skala.png", UriKind.Relative));
         }
 
-        // Wczytuje mapę z pliku tekstowego i dynamicznie tworzy tablicę kontrolek Image
-        private void WczytajMape(string sciezkaPliku)
+        private void WygenerujMape()
         {
-            try
+            wysokoscMapy = BazowaWielkoscMapy + (poziomTrudnosci * 2);
+            szerokoscMapy = BazowaWielkoscMapy + (poziomTrudnosci * 2);
+            mapa = new int[wysokoscMapy, szerokoscMapy];
+            calkowiteDrzewa = 0;
+
+            for (int y = 0; y < wysokoscMapy; y++)
             {
-                var linie = File.ReadAllLines(sciezkaPliku);//zwraca tablicę stringów, np. linie[0] to pierwsza linia pliku
-                wysokoscMapy = linie.Length;
-                szerokoscMapy = linie[0].Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;//zwraca liczbę elementów w tablicy
-                mapa = new int[wysokoscMapy, szerokoscMapy];
-
-                for (int y = 0; y < wysokoscMapy; y++)
-                {
-                    var czesci = linie[y].Split(' ', StringSplitOptions.RemoveEmptyEntries);//zwraca tablicę stringów np. czesci[0] to pierwszy element linii
-                    for (int x = 0; x < szerokoscMapy; x++)
-                    {
-                        mapa[y, x] = int.Parse(czesci[x]);//wczytanie mapy z pliku
-                    }
-                }
-
-                // Przygotowanie kontenera SiatkaMapy – czyszczenie elementów i definicji wierszy/kolumn
-                SiatkaMapy.Children.Clear();
-                SiatkaMapy.RowDefinitions.Clear();
-                SiatkaMapy.ColumnDefinitions.Clear();
-
-                for (int y = 0; y < wysokoscMapy; y++)
-                {
-                    SiatkaMapy.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(RozmiarSegmentu) });
-                }
                 for (int x = 0; x < szerokoscMapy; x++)
                 {
-                    SiatkaMapy.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(RozmiarSegmentu) });
-                }
-
-                // Tworzenie tablicy kontrolk Image i dodawanie ich do siatki
-                tablicaTerenu = new Image[wysokoscMapy, szerokoscMapy];
-                for (int y = 0; y < wysokoscMapy; y++)
-                {
-                    for (int x = 0; x < szerokoscMapy; x++)
+                    double los = random.NextDouble();
+                    mapa[y, x] = los switch
                     {
-                        Image obraz = new Image
-                        {
-                            Width = RozmiarSegmentu,
-                            Height = RozmiarSegmentu
-                        };
+                        < 0.6 => LAKA,
+                        < 0.8 => LAS,
+                        _ => SKALA
+                    };
+                    if (mapa[y, x] == LAS) calkowiteDrzewa++;
+                }
+            }
 
-                        int rodzaj = mapa[y, x];
-                        if (rodzaj >= 1 && rodzaj < ILE_TERENOW)
-                        {
-                            obraz.Source = obrazyTerenu[rodzaj];//wczytanie obrazka terenu
-                        }
-                        else
-                        {
-                            obraz.Source = null;
-                        }
+            InicjalizujMape();
+            gracz.X = szerokoscMapy / 2;
+            gracz.Y = wysokoscMapy / 2;
+            AktualizujPozycjeGracza();
 
-                        Grid.SetRow(obraz, y);
-                        Grid.SetColumn(obraz, x);
-                        SiatkaMapy.Children.Add(obraz);//dodanie obrazka do siatki na ekranie
-                        tablicaTerenu[y, x] = obraz;
+            int liczbaWilkow = 3 + (poziomTrudnosci * 2);
+            InicjalizujWilki(liczbaWilkow);
+
+            EtykietaPoziomu.Content = $"Poziom: {poziomTrudnosci}";
+            AktualizujLicznikiDrewna();
+            OdswiezZycia();
+        }
+
+        private void AktualizujLicznikiDrewna()
+        {
+            EtykietaZebraneDrewno.Text = gracz.Drewno.ToString();
+            EtykietaPozostaleDrewno.Text = (calkowiteDrzewa - gracz.Drewno).ToString();
+        }
+
+        private void InicjalizujMape()
+        {
+            SiatkaMapy.Children.Clear();
+            SiatkaMapy.RowDefinitions.Clear();
+            SiatkaMapy.ColumnDefinitions.Clear();
+
+            for (int y = 0; y < wysokoscMapy; y++)
+                SiatkaMapy.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(RozmiarSegmentu) });
+
+            for (int x = 0; x < szerokoscMapy; x++)
+                SiatkaMapy.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(RozmiarSegmentu) });
+
+            tablicaTerenu = new Image[wysokoscMapy, szerokoscMapy];
+            for (int y = 0; y < wysokoscMapy; y++)
+            {
+                for (int x = 0; x < szerokoscMapy; x++)
+                {
+                    Image obraz = new Image
+                    {
+                        Width = RozmiarSegmentu,
+                        Height = RozmiarSegmentu,
+                        Source = obrazyTerenu[mapa[y, x]]
+                    };
+                    Grid.SetRow(obraz, y);
+                    Grid.SetColumn(obraz, x);
+                    SiatkaMapy.Children.Add(obraz);
+                    tablicaTerenu[y, x] = obraz;
+                }
+            }
+
+            SiatkaMapy.Children.Add(gracz.Obraz);
+            Panel.SetZIndex(gracz.Obraz, 1);
+        }
+
+        private void InicjalizujWilki(int liczbaWilkow)
+        {
+            wilki.Clear();
+            List<(int x, int y)> dostepnePola = new List<(int, int)>();
+
+            for (int y = 0; y < wysokoscMapy; y++)
+            {
+                for (int x = 0; x < szerokoscMapy; x++)
+                {
+                    if (mapa[y, x] == LAKA &&
+                        Math.Abs(x - gracz.X) > 3 &&
+                        Math.Abs(y - gracz.Y) > 3)
+                    {
+                        dostepnePola.Add((x, y));
                     }
                 }
+            }
 
-                // Dodanie obrazka gracza – ustawiamy go na wierzchu
-                SiatkaMapy.Children.Add(obrazGracza);
-                Panel.SetZIndex(obrazGracza, 1);//ustawienie obrazka gracza na wierzchu
-                pozycjaGraczaX = 0;
-                pozycjaGraczaY = 0;
-                AktualizujPozycjeGracza();
-
-                iloscDrewna = 0;
-                EtykietaDrewna.Content = "Drewno: " + iloscDrewna;
-            }//koniec try
-            catch (Exception ex)
+            for (int i = 0; i < Math.Min(liczbaWilkow, dostepnePola.Count); i++)
             {
-                MessageBox.Show("Błąd wczytywania mapy: " + ex.Message);
+                int index = random.Next(0, dostepnePola.Count);
+                var (x, y) = dostepnePola[index];
+                dostepnePola.RemoveAt(index);
+
+                Wilk wilk = new Wilk(x, y);
+                wilki.Add(wilk);
+                Grid.SetRow(wilk.Obraz, y);
+                Grid.SetColumn(wilk.Obraz, x);
+                SiatkaMapy.Children.Add(wilk.Obraz);
             }
         }
 
-        // Aktualizuje pozycję obrazka gracza w siatce
         private void AktualizujPozycjeGracza()
         {
-            Grid.SetRow(obrazGracza, pozycjaGraczaY);
-            Grid.SetColumn(obrazGracza, pozycjaGraczaX);
+            Grid.SetRow(gracz.Obraz, gracz.Y);
+            Grid.SetColumn(gracz.Obraz, gracz.X);
         }
 
-        // Obsługa naciśnięć klawiszy – ruch gracza oraz wycinanie lasu
         private void OknoGlowne_KeyDown(object sender, KeyEventArgs e)
         {
-            int nowyX = pozycjaGraczaX;
-            int nowyY = pozycjaGraczaY;
-            //zmiana pozycji gracza
+            int nowyX = gracz.X;
+            int nowyY = gracz.Y;
+
             if (e.Key == Key.Up) nowyY--;
             else if (e.Key == Key.Down) nowyY++;
             else if (e.Key == Key.Left) nowyX--;
             else if (e.Key == Key.Right) nowyX++;
-            //Gracz nie może wyjść poza mapę
+
             if (nowyX >= 0 && nowyX < szerokoscMapy && nowyY >= 0 && nowyY < wysokoscMapy)
             {
-                // Gracz nie może wejść na pole ze skałami
                 if (mapa[nowyY, nowyX] != SKALA)
                 {
-                    pozycjaGraczaX = nowyX;
-                    pozycjaGraczaY = nowyY;
+                    gracz.X = nowyX;
+                    gracz.Y = nowyY;
                     AktualizujPozycjeGracza();
                 }
             }
 
-            // Obsługa wycinania lasu – naciskamy klawisz C
-            if (e.Key == Key.C)
+            foreach (var wilk in wilki.ToList())
             {
-                if (mapa[pozycjaGraczaY, pozycjaGraczaX] == LAS)//jeśli gracz stoi na polu lasu
+                if (gracz.X == wilk.X && gracz.Y == wilk.Y)
                 {
-                    mapa[pozycjaGraczaY, pozycjaGraczaX] = LAKA;
-                    tablicaTerenu[pozycjaGraczaY, pozycjaGraczaX].Source = obrazyTerenu[LAKA];
-                    iloscDrewna++;
-                    EtykietaDrewna.Content = "Drewno: " + iloscDrewna;
+                    gracz.Zycia--;
+                    OdswiezZycia();
+                    SiatkaMapy.Children.Remove(wilk.Obraz);
+                    wilki.Remove(wilk);
+                    break;
                 }
             }
-        }
 
-        // Obsługa przycisku "Wczytaj mapę"
-        private void WczytajMape_Click(object sender, RoutedEventArgs e)
-        {
-            OpenFileDialog oknoDialogowe = new OpenFileDialog();
-            oknoDialogowe.Filter = "Plik mapy (*.txt)|*.txt";
-            oknoDialogowe.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory; // Ustawienie katalogu początkowego
-            bool? czyOtwartoMape = oknoDialogowe.ShowDialog();
-            if (czyOtwartoMape == true)
+            // Ścinanie drzewa (klawisz E)
+            if (e.Key == Key.E && mapa[gracz.Y, gracz.X] == LAS)
             {
-                WczytajMape(oknoDialogowe.FileName);
+                mapa[gracz.Y, gracz.X] = LAKA;
+                tablicaTerenu[gracz.Y, gracz.X].Source = obrazyTerenu[LAKA];
+                gracz.Drewno++;
+                AktualizujLicznikiDrewna();
+                SprawdzCzyWygrana();
             }
         }
+
+        private void SprawdzCzyWygrana()
+        {
+            if (gracz.Drewno >= calkowiteDrzewa)
+            {
+                WinPanel.Visibility = Visibility.Visible;
+                this.IsEnabled = false;
+            }
+        }
+
+        private void OdswiezZycia()
+        {
+            Serce1.Visibility = gracz.Zycia >= 1 ? Visibility.Visible : Visibility.Collapsed;
+            Serce2.Visibility = gracz.Zycia >= 2 ? Visibility.Visible : Visibility.Collapsed;
+            Serce3.Visibility = gracz.Zycia >= 3 ? Visibility.Visible : Visibility.Collapsed;
+
+            if (gracz.Zycia <= 0)
+            {
+                MessageBox.Show("Game Over!");
+                NowaGra();
+            }
+        }
+
+        private void Restart_Click(object sender, RoutedEventArgs e)
+        {
+            NowaGra();
+        }
+
+        private void Kontynuj_Click(object sender, RoutedEventArgs e)
+        {
+            Console.WriteLine("Kontynuuj clicked!"); // Debug w Output
+            WinPanel.Visibility = Visibility.Collapsed;
+            LevelCompletePanel.Visibility = Visibility.Visible;
+            LevelCompletePanel.IsEnabled = true;
+            FocusManager.SetFocusedElement(this, NextLevelButton);
+        }
+
+        private void NextLevel_Click(object sender, RoutedEventArgs e)
+        {
+            poziomTrudnosci++;
+            WygenerujMape();
+            LevelCompletePanel.Visibility = Visibility.Collapsed;
+            this.IsEnabled = true;
+        }
+
+        private void ExitGame_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
     }
+
+    public class Wilk
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public Image Obraz { get; set; }
+
+        public Wilk(int x, int y)
+        {
+            X = x;
+            Y = y;
+            Obraz = new Image
+            {
+                Width = 32,
+                Height = 32,
+                Source = new BitmapImage(new Uri("wilk.png", UriKind.Relative))
+            };
+        }
+    }
+
+    public class Gracz
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int Zycia { get; set; }
+        public int Drewno { get; set; }
+        public Image Obraz { get; set; }
+    }
+    
 }
-
-
