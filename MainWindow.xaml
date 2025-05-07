@@ -1,7 +1,7 @@
 ﻿<Window x:Class="Gra2D.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Gra 2D" Height="700" Width="800" KeyDown="OknoGlowne_KeyDown">
+        Title="Gra 2D" Height="700" Width="800" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style x:Key="GameButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#FF4CAF50"/>
@@ -14,7 +14,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
+                        <Border x:Name="border"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
@@ -58,73 +58,173 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- Panel górny -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10">
-            <Border Background="#333" CornerRadius="5" Padding="10" Margin="0,0,10,0">
-                <StackPanel>
-                    <TextBlock Text="Ekwipunek" Foreground="White" FontWeight="Bold" Margin="0,0,0,5"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🌲:" FontSize="16" Foreground="White" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="EtykietaZebraneDrewno" Text="0" FontSize="16" Foreground="White" Margin="0,0,10,0"/>
-                        <TextBlock Text="Pozostało:" FontSize="16" Foreground="White" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="EtykietaPozostaleDrewno" Text="0" FontSize="16" Foreground="White"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <StackPanel Orientation="Vertical">
-                <StackPanel Orientation="Horizontal">
-                    <Label x:Name="EtykietaPoziomu" Content="Poziom: 1" FontSize="16" Margin="10" Foreground="White"/>
-                </StackPanel>
-                <StackPanel x:Name="SerduszkaPanel" Orientation="Horizontal" Margin="10">
-                    <TextBlock x:Name="Serce1" Text="♥" FontSize="24" Foreground="Red"/>
-                    <TextBlock x:Name="Serce2" Text="♥" FontSize="24" Foreground="Red" Margin="5,0"/>
-                    <TextBlock x:Name="Serce3" Text="♥" FontSize="24" Foreground="Red"/>
-                </StackPanel>
-            </StackPanel>
-
-            <Button x:Name="PrzyciskRestart" Content="Nowa gra" 
-                    Style="{StaticResource GameButtonStyle}"
-                    Click="Restart_Click" Margin="10"/>
+    <Grid x:Name="MainGrid" Background="#FFF5F5F5">
+        <!-- Menu główne -->
+        <StackPanel x:Name="MainMenuPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Gra 2D" FontSize="48" FontWeight="Bold" Margin="0,0,0,30" Foreground="#FF333333"/>
+            <Button Content="Nowa Gra" Style="{StaticResource MenuButtonStyle}" Click="NowaGra_Click" MinWidth="200"/>
+            <Button Content="Wybierz Poziom Trudności" Style="{StaticResource MenuButtonStyle}" Click="WybierzPoziom_Click" MinWidth="200"/>
+            <Button Content="Wybierz Mapę" Style="{StaticResource MenuButtonStyle}" Click="WybierzMape_Click" MinWidth="200"/>
+            <Button Content="Instrukcje" Style="{StaticResource MenuButtonStyle}" Click="Instrukcje_Click" MinWidth="200"/>
+            <Button Content="Wyjdź" Style="{StaticResource MenuButtonStyle}" Click="Wyjdz_Click" MinWidth="200"/>
         </StackPanel>
 
-        <!-- Mapa -->
-        <Grid x:Name="SiatkaMapy" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- Wybór poziomu trudności -->
+        <StackPanel x:Name="PoziomTrudnosciPanel" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Wybierz Poziom Trudności" FontSize="32" FontWeight="Bold" Margin="0,0,0,30" Foreground="#FF333333"/>
+            <Button Content="Łatwy" Style="{StaticResource MenuButtonStyle}" Click="LatwyPoziom_Click" MinWidth="200"/>
+            <Button Content="Średni" Style="{StaticResource MenuButtonStyle}" Click="SredniPoziom_Click" MinWidth="200"/>
+            <Button Content="Trudny" Style="{StaticResource MenuButtonStyle}" Click="TrudnyPoziom_Click" MinWidth="200"/>
+            <Button Content="Wróć" Style="{StaticResource MenuButtonStyle}" Click="WrocDoMenuGlownego_Click" MinWidth="200"/>
+        </StackPanel>
 
-        <!-- Panel wygranej - ZMIENIONA WERSJA -->
-        <Grid x:Name="WinPanel" Visibility="Collapsed" Grid.RowSpan="2" Background="#80000000" Panel.ZIndex="100">
+        <!-- Wybór mapy -->
+        <StackPanel x:Name="MapaPanel" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Wybierz Mapę" FontSize="32" FontWeight="Bold" Margin="0,0,0,30" Foreground="#FF333333"/>
+            <Button Content="Mapa Łatwa (5x5)" Style="{StaticResource MenuButtonStyle}" Click="MapaLatwa_Click" MinWidth="200"/>
+            <Button Content="Mapa Średnia (10x10)" Style="{StaticResource MenuButtonStyle}" Click="MapaSrednia_Click" MinWidth="200"/>
+            <Button Content="Mapa Trudna (15x15)" Style="{StaticResource MenuButtonStyle}" Click="MapaTrudna_Click" MinWidth="200"/>
+            <Button Content="Wróć" Style="{StaticResource MenuButtonStyle}" Click="WrocDoMenuGlownego_Click" MinWidth="200"/>
+        </StackPanel>
+
+        <!-- Instrukcje -->
+        <ScrollViewer x:Name="InstrukcjePanel" Visibility="Collapsed">
+            <Border Background="White" Padding="20" CornerRadius="10" Margin="20" Width="600">
+                <StackPanel>
+                    <TextBlock Text="INSTRUKCJA GRY" 
+                               FontSize="28" 
+                               FontWeight="Bold" 
+                               Foreground="#FF2196F3"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Sterowanie:" 
+                               FontSize="20" 
+                               FontWeight="Bold"
+                               Margin="0,10,0,5"/>
+                    <StackPanel Margin="20,0,0,0">
+                        <TextBlock Text="- Strzałki (↑, ↓, ←, →): Poruszanie się gracza" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Klawisz [E]: Ścinanie drzewa na obecnym polu" 
+                                   Margin="0,3"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Zasady gry:" 
+                               FontSize="20" 
+                               FontWeight="Bold"
+                               Margin="0,15,0,5"/>
+                    <StackPanel Margin="20,0,0,0">
+                        <TextBlock Text="- Zbierz wszystkie drzewa (🌲) na mapie" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Uważaj na wilki! Każde spotkanie z wilkiem odejmuje 1 serce (❤)" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Gra kończy się gdy stracisz wszystkie 3 życia" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Po zebraniu wszystkich drzew wygrywasz!" 
+                                   Margin="0,3"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Poziomy trudności:" 
+                               FontSize="20" 
+                               FontWeight="Bold"
+                               Margin="0,15,0,5"/>
+                    <StackPanel Margin="20,0,0,0">
+                        <TextBlock Text="- Łatwy: wilki co 6 sekund, mapa 5×5" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Średni: wilki co 3.5 sekundy, mapa 10×10" 
+                                   Margin="0,3"/>
+                        <TextBlock Text="- Trudny: wilki co 2 sekundy, mapa 15×15" 
+                                   Margin="0,3"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Powodzenia w grze!" 
+                               FontSize="18" 
+                               FontStyle="Italic"
+                               HorizontalAlignment="Center"
+                               Margin="0,20,0,0"/>
+
+                    <Button Content="Wróć do menu głównego" 
+                            Style="{StaticResource MenuButtonStyle}"
+                            Click="WrocDoMenuGlownego_Click"
+                            HorizontalAlignment="Center"
+                            Margin="0,30,0,10"
+                            Padding="15,8"
+                            MinWidth="200"/>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+
+        <!-- Panel gry -->
+        <Grid x:Name="GamePanel" Visibility="Collapsed" KeyDown="OknoGlowne_KeyDown" Focusable="True">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10">
+                <Border Background="#333" CornerRadius="5" Padding="10" Margin="0,0,10,0">
+                    <StackPanel>
+                        <TextBlock Text="Ekwipunek" Foreground="White" FontWeight="Bold" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🌲:" FontSize="16" Foreground="White" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="EtykietaZebraneDrewno" Text="0" FontSize="16" Foreground="White" Margin="0,0,10,0"/>
+                            <TextBlock Text="Pozostało:" FontSize="16" Foreground="White" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="EtykietaPozostaleDrewno" Text="0" FontSize="16" Foreground="White"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal">
+                        <Label x:Name="EtykietaPoziomu" Content="Poziom: " FontSize="16" Margin="10" Foreground="#FF333333"/>
+                    </StackPanel>
+                    <StackPanel x:Name="SerduszkaPanel" Orientation="Horizontal" Margin="10">
+                        <TextBlock x:Name="Serce1" Text="❤" FontSize="24" Foreground="Red"/>
+                        <TextBlock x:Name="Serce2" Text="❤" FontSize="24" Foreground="Red" Margin="5,0"/>
+                        <TextBlock x:Name="Serce3" Text="❤" FontSize="24" Foreground="Red"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Button x:Name="PrzyciskRestart" Content="Nowa gra"
+                        Style="{StaticResource GameButtonStyle}"
+                        Click="Restart_Click" Margin="10"/>
+                <Button Content="Menu" Style="{StaticResource GameButtonStyle}" Click="WrocDoMenuGlownegoZGry_Click" Margin="10"/>
+            </StackPanel>
+
+            <Grid x:Name="SiatkaMapy" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Panel wygranej -->
+        <Grid x:Name="WinPanel" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
             <Border Background="White" Padding="20" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
-                    <TextBlock Text="WIN!" FontSize="48" FontWeight="Bold" 
-                              Foreground="Green" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-                    <Button x:Name="KontynujButton" Content="Kontynuuj" 
-                           Style="{StaticResource MenuButtonStyle}"
-                           Click="Kontynuj_Click" Padding="15,10"
-                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                           MinWidth="150"/>
+                    <TextBlock Text="WYGRAŁEŚ!" FontSize="48" FontWeight="Bold"
+                               Foreground="Green" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <Button x:Name="WrocDoMenuButtonWin" Content="Wróć do Menu Głównego"
+                            Style="{StaticResource MenuButtonStyle}"
+                            Click="WrocDoMenuGlownego_Click" Padding="15,10"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MinWidth="250" Margin="0,0,0,10"/>
+                    <Button x:Name="KontynuujButton" Content="Kontynuuj Grę"
+                            Style="{StaticResource MenuButtonStyle}"
+                            Click="Kontynuuj_Click" Padding="15,10"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MinWidth="250"/>
                 </StackPanel>
             </Border>
         </Grid>
 
-        <!-- Panel wyboru akcji -->
-        <Grid x:Name="LevelCompletePanel" Visibility="Collapsed" Grid.RowSpan="2" Background="#80000000" Panel.ZIndex="99">
+        <!-- Panel przegranej -->
+        <Grid x:Name="GameOverPanel" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="100">
             <Border Background="White" Padding="20" CornerRadius="10" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
-                    <TextBlock Text="Wybierz akcję:" FontSize="24" Margin="0,0,0,20" HorizontalAlignment="Center"/>
-                    <Button x:Name="NextLevelButton" Content="Przejdź na następny poziom" 
-                           Style="{StaticResource MenuButtonStyle}"
-                           Click="NextLevel_Click" Padding="10,5"
-                           HorizontalAlignment="Center" MinWidth="200"/>
-                    <Button x:Name="ExitGameButton" Content="Zakończ grę" 
-                           Style="{StaticResource MenuButtonStyle}"
-                           Click="ExitGame_Click" Padding="10,5"
-                           HorizontalAlignment="Center" MinWidth="200"/>
+                    <TextBlock Text="KONIEC GRY!" FontSize="48" FontWeight="Bold"
+                               Foreground="Red" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <Button x:Name="WrocDoMenuButtonGameOver" Content="Wróć do Menu Głównego"
+                            Style="{StaticResource MenuButtonStyle}"
+                            Click="WrocDoMenuGlownego_Click" Padding="15,10"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MinWidth="250"/>
                 </StackPanel>
             </Border>
         </Grid>
