@@ -32,6 +32,7 @@ namespace Gra2D
         private int wybranaMapaSzerokosc = 10;
         private int wybranaMapaWysokosc = 10;
         private int poziomTrudnosci = 1;
+        private bool ruchWTrakcie = false;
 
 
         public MainWindow()
@@ -41,6 +42,27 @@ namespace Gra2D
             PokazMenuGlowne();
             this.WindowState = WindowState.Maximized;
             this.WindowStyle = WindowStyle.None;
+
+            // Usuń stare przypisanie zdarzenia
+            // this.KeyDown += OknoGlowne_KeyDown; // TO USUŃ
+        }
+
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (GamePanel.Visibility == Visibility.Visible)
+            {
+                this.KeyDown += OknoGlowne_KeyDown;
+            }
+        }
+
+        protected override void OnDeactivated(EventArgs e)
+        {
+            if (GamePanel.Visibility == Visibility.Visible)
+            {
+                this.KeyDown -= OknoGlowne_KeyDown;
+            }
+            base.OnDeactivated(e);
         }
 
         private void PokazMenuGlowne()
@@ -55,6 +77,7 @@ namespace Gra2D
 
             // Reset focus
             MainMenuPanel.Focus();
+            this.KeyDown -= OknoGlowne_KeyDown;
         }
         public class Gracz
         {
@@ -78,7 +101,9 @@ namespace Gra2D
 
         private void NowaGra_Click(object sender, RoutedEventArgs e)
         {
-            WybierzPoziom_Click(sender, e);
+            // Przejdź do wyboru poziomu trudności
+            MainMenuPanel.Visibility = Visibility.Collapsed;
+            PoziomTrudnosciPanel.Visibility = Visibility.Visible;
         }
 
         private void WybierzPoziom_Click(object sender, RoutedEventArgs e)
@@ -116,22 +141,35 @@ namespace Gra2D
             }
 
             PokazMenuGlowne();
+            this.KeyDown -= OknoGlowne_KeyDown;
         }
 
 
         private void WrocDoMenuGlownegoZGry_Click(object sender, RoutedEventArgs e)
         {
+            // Zatrzymaj timer jeśli aktywny
             if (timerWilkow != null && timerWilkow.IsEnabled)
             {
                 timerWilkow.Stop();
             }
-            PokazMenuGlowne();
+
+            // Ukryj wszystkie panele gry
+            GamePanel.Visibility = Visibility.Collapsed;
+            WinPanel.Visibility = Visibility.Collapsed;
+            GameOverPanel.Visibility = Visibility.Collapsed;
+
+            // Pokaż menu główne
+            MainMenuPanel.Visibility = Visibility.Visible;
+
+            // Upewnij się że okno jest aktywne
+            this.IsEnabled = true;
+            this.Focus();
         }
 
         private void LatwyPoziom_Click(object sender, RoutedEventArgs e)
         {
             poziomTrudnosci = 1;
-            predkoscWilkow = 6;
+            predkoscWilkow = 6;  // Wilki wolniejsze
             PoziomTrudnosciPanel.Visibility = Visibility.Collapsed;
             WybierzMape_Click(sender, e);
         }
@@ -139,7 +177,7 @@ namespace Gra2D
         private void SredniPoziom_Click(object sender, RoutedEventArgs e)
         {
             poziomTrudnosci = 2;
-            predkoscWilkow = 3.5;
+            predkoscWilkow = 4;  // Średnia prędkość
             PoziomTrudnosciPanel.Visibility = Visibility.Collapsed;
             WybierzMape_Click(sender, e);
         }
@@ -147,7 +185,7 @@ namespace Gra2D
         private void TrudnyPoziom_Click(object sender, RoutedEventArgs e)
         {
             poziomTrudnosci = 3;
-            predkoscWilkow = 2;
+            predkoscWilkow = 2;  // Wilki szybsze
             PoziomTrudnosciPanel.Visibility = Visibility.Collapsed;
             WybierzMape_Click(sender, e);
         }
@@ -174,6 +212,19 @@ namespace Gra2D
             wybranaMapaWysokosc = 15;
             MapaPanel.Visibility = Visibility.Collapsed;
             StartNowaGra();
+        }
+
+        private void MenuButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Wróć do menu głównego
+            GamePanel.Visibility = Visibility.Collapsed;
+            MainMenuPanel.Visibility = Visibility.Visible;
+
+            // Zatrzymaj timer jeśli aktywny
+            if (timerWilkow != null)
+            {
+                timerWilkow.Stop();
+            }
         }
 
         private void StartNowaGra()
@@ -278,9 +329,17 @@ namespace Gra2D
         private void InicjalizujWilki()
         {
             wilki.Clear();
-            int liczbaWilkow = 3 + (poziomTrudnosci * 2);
+            int liczbaWilkow = poziomTrudnosci switch
+            {
+                1 => 2,  // Łatwy - 2 wilki
+                2 => 5,  // Średni - 5 wilków
+                3 => 8,  // Trudny - 8 wilków
+                _ => 2   // Domyślnie 2 wilki
+            };
+
             List<(int x, int y)> dostepnePola = new List<(int, int)>();
 
+            // Reszta metody pozostaje bez zmian
             for (int y = 0; y < wysokoscMapy; y++)
             {
                 for (int x = 0; x < szerokoscMapy; x++)
@@ -294,7 +353,10 @@ namespace Gra2D
                 }
             }
 
-            for (int i = 0; i < Math.Min(liczbaWilkow, dostepnePola.Count); i++)
+            // Ogranicz liczbę wilków do dostępnych pól
+            liczbaWilkow = Math.Min(liczbaWilkow, dostepnePola.Count);
+
+            for (int i = 0; i < liczbaWilkow; i++)
             {
                 int index = random.Next(0, dostepnePola.Count);
                 var (x, y) = dostepnePola[index];
@@ -366,47 +428,66 @@ namespace Gra2D
 
         private void OknoGlowne_KeyDown(object sender, KeyEventArgs e)
         {
-            if (GamePanel.Visibility == Visibility.Visible && WinPanel.Visibility != Visibility.Visible && GameOverPanel.Visibility != Visibility.Visible)
+            if (GamePanel.Visibility != Visibility.Visible ||
+                WinPanel.Visibility == Visibility.Visible ||
+                GameOverPanel.Visibility == Visibility.Visible ||
+                ruchWTrakcie)
+            {
+                return;
+            }
+
+            ruchWTrakcie = true;
+
+            try
             {
                 int nowyX = gracz.X;
                 int nowyY = gracz.Y;
 
-                if (e.Key == Key.Up) nowyY--;
-                else if (e.Key == Key.Down) nowyY++;
-                else if (e.Key == Key.Left) nowyX--;
-                else if (e.Key == Key.Right) nowyX++;
-
-                if (nowyX >= 0 && nowyX < szerokoscMapy && nowyY >= 0 && nowyY < wysokoscMapy)
+                switch (e.Key)
                 {
-                    if (mapa[nowyY, nowyX] != SKALA)
+                    case Key.Up: nowyY--; break;
+                    case Key.Down: nowyY++; break;
+                    case Key.Left: nowyX--; break;
+                    case Key.Right: nowyX++; break;
+                    case Key.E:
+                        if (mapa[gracz.Y, gracz.X] == LAS)
+                        {
+                            mapa[gracz.Y, gracz.X] = LAKA;
+                            tablicaTerenu[gracz.Y, gracz.X].Source = obrazyTerenu[LAKA];
+                            gracz.Drewno++;
+                            AktualizujLicznikiDrewna();
+                            SprawdzCzyWygrana();
+                        }
+                        return;
+                    default:
+                        return;
+                }
+
+                if (nowyX >= 0 && nowyX < szerokoscMapy &&
+                    nowyY >= 0 && nowyY < wysokoscMapy &&
+                    mapa[nowyY, nowyX] != SKALA)
+                {
+                    gracz.X = nowyX;
+                    gracz.Y = nowyY;
+                    AktualizujPozycjeGracza();
+
+                    // Sprawdź kolizję z wilkami
+                    foreach (var wilk in wilki.ToList())
                     {
-                        gracz.X = nowyX;
-                        gracz.Y = nowyY;
-                        AktualizujPozycjeGracza();
+                        if (gracz.X == wilk.X && gracz.Y == wilk.Y)
+                        {
+                            gracz.Zycia--;
+                            OdswiezZycia();
+                            SiatkaMapy.Children.Remove(wilk.Obraz);
+                            wilki.Remove(wilk);
+                            break;
+                        }
                     }
                 }
-
-                foreach (var wilk in wilki.ToList())
-                {
-                    if (gracz.X == wilk.X && gracz.Y == wilk.Y)
-                    {
-                        gracz.Zycia--;
-                        OdswiezZycia();
-                        SiatkaMapy.Children.Remove(wilk.Obraz);
-                        wilki.Remove(wilk);
-                        break;
-                    }
-                }
-
-                // Ścinanie drzewa (klawisz E)
-                if (e.Key == Key.E && mapa[gracz.Y, gracz.X] == LAS)
-                {
-                    mapa[gracz.Y, gracz.X] = LAKA;
-                    tablicaTerenu[gracz.Y, gracz.X].Source = obrazyTerenu[LAKA];
-                    gracz.Drewno++;
-                    AktualizujLicznikiDrewna();
-                    SprawdzCzyWygrana();
-                }
+            }
+            finally
+            {
+                ruchWTrakcie = false;
             }
         }
 
